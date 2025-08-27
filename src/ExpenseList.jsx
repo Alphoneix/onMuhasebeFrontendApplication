@@ -44,9 +44,6 @@ function ExpenseList() {
         queryKey: ['incomes'], queryFn: fetchIncomes, initialData: []
     });
 
-    const data = [...expensesData.map(e => ({...e, id: e.id + "expense"})), ...incomeData.map(i => ({
-        ...i, id: i.id + "income"
-    }))];
     const isLoading = expenseLoading || incomeLoading;
     const isError = expenseError || incomeError;
 
@@ -57,8 +54,8 @@ function ExpenseList() {
                     open: true, message: 'Değer başarıyla eklendi!', severity: 'success'
                 });
                 queryClient.refetchQueries(["expenses", "incomes"]);
-                // Form alanlarını temizle
                 setAmount('');
+                setIncomeAmount('');
             })
             .catch(error => {
                 setSnackbar({
@@ -91,8 +88,13 @@ function ExpenseList() {
         setSnackbar({...snackbar, open: false});
     }
 
-    // Toplam gider hesapla
-    const totalExpense = data.reduce((sum, expense) => sum + expense.amount * (expense.id.endsWith("expense") ? -1 : 1), 0);
+    // Giderler toplamı
+    const totalExpenseSum = expensesData.reduce((sum, expense) => sum + Number(expense.amount), 0);
+    // Gelirler toplamı
+    const totalIncomeSum = incomeData.reduce((sum, income) => sum + Number(income.amount), 0);
+
+    // Genel toplam (gelirler - giderler)
+    const generalSum = totalIncomeSum - totalExpenseSum;
 
     return (<Container maxWidth="md">
         <Box sx={{my: 4}}>
@@ -104,15 +106,14 @@ function ExpenseList() {
                 <Grid item xs={12}>
                     <Card>
                         <CardContent>
-                            <Typography variant="h6" gutterBottom>
-                                Yeni Gider Ekle
-                            </Typography>
-
                             <Grid container spacing={2} alignItems="center">
-                                <Grid item xs={12} md={5}>
+                                <Grid item xs={12} md={6}>
+                                    <Typography variant="h6" gutterBottom>
+                                        Yeni Gider Ekle
+                                    </Typography>
                                     <TextField
                                         fullWidth
-                                        label="Tutar"
+                                        label="Gider Miktarı"
                                         type="number"
                                         value={amount}
                                         onChange={(e) => setAmount(e.target.value)}
@@ -120,8 +121,6 @@ function ExpenseList() {
                                             startAdornment: (<InputAdornment position="start">₺</InputAdornment>),
                                         }}
                                     />
-                                </Grid>
-                                <Grid item xs={12} md={2}>
                                     <Button
                                         variant="contained"
                                         color="primary"
@@ -129,16 +128,18 @@ function ExpenseList() {
                                         onClick={onAddExpense}
                                         startIcon={<AddIcon/>}
                                         disabled={!amount}
+                                        sx={{mt: 1}}
                                     >
-                                        Ekle
+                                        Yeni Gider Ekle
                                     </Button>
                                 </Grid>
-
-
-                                <Grid item xs={12} md={5}>
+                                <Grid item xs={12} md={6}>
+                                    <Typography variant="h6" gutterBottom>
+                                        Yeni Gelir Ekle
+                                    </Typography>
                                     <TextField
                                         fullWidth
-                                        label="Tutar"
+                                        label="Gelir Miktarı"
                                         type="number"
                                         value={incomeAmount}
                                         onChange={(e) => setIncomeAmount(e.target.value)}
@@ -146,8 +147,6 @@ function ExpenseList() {
                                             startAdornment: (<InputAdornment position="start">₺</InputAdornment>),
                                         }}
                                     />
-                                </Grid>
-                                <Grid item xs={12} md={2}>
                                     <Button
                                         variant="contained"
                                         color="primary"
@@ -155,8 +154,9 @@ function ExpenseList() {
                                         onClick={onAddIncome}
                                         startIcon={<AddIcon/>}
                                         disabled={!incomeAmount}
+                                        sx={{mt: 1}}
                                     >
-                                        Ekle
+                                        Yeni Gelir Ekle
                                     </Button>
                                 </Grid>
                             </Grid>
@@ -169,7 +169,8 @@ function ExpenseList() {
                 data={expensesData.map(e => ({ ...e, id: e.id.toString() + "expense" }))}
                 isLoading={expenseLoading}
                 isError={expenseError}
-                totalExpense={totalExpense}
+                total={totalExpenseSum}
+                totalLabel="Giderler Toplamı"
                 title="Gider Listesi"
             />
 
@@ -177,9 +178,21 @@ function ExpenseList() {
                 data={incomeData.map(i => ({ ...i, id: i.id.toString() + "income" }))}
                 isLoading={incomeLoading}
                 isError={incomeError}
-                totalExpense={totalExpense}
+                total={totalIncomeSum}
+                totalLabel="Gelirler Toplamı"
                 title="Gelir Listesi"
             />
+
+            {/* Genel toplam (Gelirler - Giderler) */}
+            <Box sx={{mt: 4}}>
+                <Card>
+                    <CardContent>
+                        <Typography variant="h6" align="right">
+                            Genel Toplam: {generalSum.toFixed(2)} ₺
+                        </Typography>
+                    </CardContent>
+                </Card>
+            </Box>
 
         </Box>
 
