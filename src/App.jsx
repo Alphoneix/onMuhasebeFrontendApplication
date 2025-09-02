@@ -1,6 +1,7 @@
 import React from 'react'
 import ExpenseList from "./ExpenseList.jsx";
 import {QueryClient, QueryClientProvider} from "@tanstack/react-query";
+import SalesPaymentTracking from "./SalesPaymentTracking.jsx";
 
 
 function App() {
@@ -10,7 +11,7 @@ function App() {
         <>
             <QueryClientProvider client={queryClient}>
                 <ExpenseList/>
-
+                <SalesPaymentTracking/>
             </QueryClientProvider>
         </>)
 }
