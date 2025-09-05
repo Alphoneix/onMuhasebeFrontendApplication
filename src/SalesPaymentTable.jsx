@@ -7,11 +7,14 @@ import SalesPaymentTableRow from "./SalesPaymentTableRow.jsx";
 
 function SalesPaymentTable({ status, onEdit }) {
     const queryClient = useQueryClient();
+
     const { data, isLoading, isError } = useQuery({
         queryKey: ["paymentRecords", status],
         queryFn: () => fetchPaymentRecords(status),
         initialData: [],
     });
+
+    const sortedData = [...data].sort((a, b) => new Date(a.dueDate) - new Date(b.dueDate));
 
     return (
         <>
@@ -47,12 +50,12 @@ function SalesPaymentTable({ status, onEdit }) {
                                     Veri yüklenirken hata oluştu!
                                 </TableCell>
                             </TableRow>
-                        ) : data.length === 0 ? (
+                        ) : sortedData.length === 0 ? (
                             <TableRow>
                                 <TableCell colSpan={8}>Henüz kayıt yok.</TableCell>
                             </TableRow>
                         ) : (
-                            data.map((record) => (
+                            sortedData.map((record) => (
                                 <SalesPaymentTableRow key={record.id} record={record} onEdit={onEdit} />
                             ))
                         )}

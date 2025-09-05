@@ -2,6 +2,7 @@ import React, { useState } from "react";
 import { Card, CardContent, Typography, Box, Button, Grid } from "@mui/material";
 import SalesPaymentTable from "./SalesPaymentTable.jsx";
 import EditPaymentDialog from "./EditPaymentDialog.jsx";
+import PaymentAddDialog from "./PaymentAddDialog.jsx"; // Yeni eklenen dosya!
 
 const STATUS_OPTIONS = [
     { value: "YAPILMADI", label: "Yapılmayan Ödemeler" },
@@ -12,6 +13,7 @@ const STATUS_OPTIONS = [
 function SalesPaymentTracking() {
     const [statusFilter, setStatusFilter] = useState("YAPILMADI");
     const [editDialogOpen, setEditDialogOpen] = useState(false);
+    const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState(null);
 
     const handleEdit = (paymentRecord) => {
@@ -22,6 +24,14 @@ function SalesPaymentTracking() {
     const handleDialogClose = () => {
         setEditDialogOpen(false);
         setSelectedPayment(null);
+    };
+
+    const handleAddOpen = () => {
+        setAddDialogOpen(true);
+    };
+
+    const handleAddClose = () => {
+        setAddDialogOpen(false);
     };
 
     return (
@@ -43,6 +53,18 @@ function SalesPaymentTracking() {
                                 </Button>
                             </Grid>
                         ))}
+                        <Grid item xs>
+                            {/* Sağda hizalama için boş Grid */}
+                        </Grid>
+                        <Grid item>
+                            <Button
+                                variant="contained"
+                                color="success"
+                                onClick={handleAddOpen}
+                            >
+                                Yeni Ödeme Ekle
+                            </Button>
+                        </Grid>
                     </Grid>
                     <SalesPaymentTable
                         status={statusFilter}
@@ -54,6 +76,10 @@ function SalesPaymentTracking() {
                 open={editDialogOpen}
                 paymentRecord={selectedPayment}
                 onClose={handleDialogClose}
+            />
+            <PaymentAddDialog
+                open={addDialogOpen}
+                onClose={handleAddClose}
             />
         </Box>
     );
