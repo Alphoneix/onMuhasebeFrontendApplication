@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import {
     Dialog,
     DialogTitle,
@@ -12,6 +12,7 @@ import {
     MenuItem,
     FormControl,
     Select,
+    Autocomplete
 } from "@mui/material";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { addItem } from "./ItemService.js";
@@ -27,7 +28,8 @@ const PAYMENT_FREQUENCY_UNIT_OPTIONS = [
     { value: "ONCE", label: "Tek Sefer" },
 ];
 
-function PaymentAddDialog({ open, onClose }) {
+// paymentRecords prop'u ile mevcut kayıtlar üst component'ten aktarılıyor
+function PaymentAddDialog({ open, onClose, paymentRecords }) {
     const [productName, setProductName] = useState("");
     const [customerName, setCustomerName] = useState("");
     const [startDate, setStartDate] = useState("");
@@ -38,6 +40,25 @@ function PaymentAddDialog({ open, onClose }) {
     const [totalAmount, setTotalAmount] = useState("");
     const [error, setError] = useState("");
     const queryClient = useQueryClient();
+
+    // paymentRecords'tan benzersiz müşteri adları (büyük/küçük harf duyarsız)
+    const customerNames = useMemo(() => {
+        if (!paymentRecords) return [];
+        const names = paymentRecords
+            .map(rec => rec.item?.customerName || rec.customerName || "")
+            .filter(x => !!x)
+            .map(name => name.trim().toLowerCase());
+        // Sadece küçük harfe çevirip benzersizleştir, sonra orijinal halleriyle döndür
+        const unique = Array.from(new Set(names));
+        // Orijinal halleriyle döndürmek için ilk eşleşeni bul
+        return unique
+            .map(lcName =>
+                paymentRecords.find(rec =>
+                    (rec.item?.customerName || rec.customerName || "").trim().toLowerCase() === lcName
+                )
+            )
+            .map(rec => (rec.item?.customerName || rec.customerName || ""));
+    }, [paymentRecords]);
 
     const mutation = useMutation({
         mutationFn: (newItem) => addItem(newItem),
@@ -96,11 +117,18 @@ function PaymentAddDialog({ open, onClose }) {
                         />
                     </Grid>
                     <Grid item xs={12}>
-                        <TextField
-                            label="Müşteri Adı"
-                            fullWidth
+                        <Autocomplete
+                            freeSolo
+                            options={customerNames}
                             value={customerName}
-                            onChange={e => setCustomerName(e.target.value)}
+                            onInputChange={(_, newValue) => setCustomerName(newValue)}
+                            renderInput={(params) => (
+                                <TextField
+                                    {...params}
+                                    label="Müşteri Adı"
+                                    fullWidth
+                                />
+                            )}
                         />
                     </Grid>
                     <Grid item xs={12}>

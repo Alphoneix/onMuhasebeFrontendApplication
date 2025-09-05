@@ -1,8 +1,10 @@
-import React, { useState } from "react";
+import React, { useState, useMemo } from "react";
 import { Card, CardContent, Typography, Box, Button, Grid } from "@mui/material";
+import { useQuery } from "@tanstack/react-query";
 import SalesPaymentTable from "./SalesPaymentTable.jsx";
 import EditPaymentDialog from "./EditPaymentDialog.jsx";
-import PaymentAddDialog from "./PaymentAddDialog.jsx"; // Yeni eklenen dosya!
+import PaymentAddDialog from "./PaymentAddDialog.jsx";
+import { fetchPaymentRecords } from "./ItemService.js";
 
 const STATUS_OPTIONS = [
     { value: "YAPILMADI", label: "Yapılmayan Ödemeler" },
@@ -15,6 +17,30 @@ function SalesPaymentTracking() {
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState(null);
+
+    // Her status için ayrı ayrı ödeme kayıtlarını çekiyoruz
+    const { data: recordsNotDone = [] } = useQuery({
+        queryKey: ["paymentRecords", "YAPILMADI"],
+        queryFn: () => fetchPaymentRecords("YAPILMADI"),
+        initialData: [],
+    });
+    const { data: recordsDone = [] } = useQuery({
+        queryKey: ["paymentRecords", "YAPILDI"],
+        queryFn: () => fetchPaymentRecords("YAPILDI"),
+        initialData: [],
+    });
+    const { data: recordsNever = [] } = useQuery({
+        queryKey: ["paymentRecords", "YAPILMAYACAK"],
+        queryFn: () => fetchPaymentRecords("YAPILMAYACAK"),
+        initialData: [],
+    });
+
+    // Bütün kayıtları birleştiriyoruz
+    const allPaymentRecords = useMemo(() => [
+        ...recordsNotDone,
+        ...recordsDone,
+        ...recordsNever
+    ], [recordsNotDone, recordsDone, recordsNever]);
 
     const handleEdit = (paymentRecord) => {
         setSelectedPayment(paymentRecord);
@@ -80,6 +106,7 @@ function SalesPaymentTracking() {
             <PaymentAddDialog
                 open={addDialogOpen}
                 onClose={handleAddClose}
+                paymentRecords={allPaymentRecords} // autocomplete için tüm kayıtlar!
             />
         </Box>
     );
