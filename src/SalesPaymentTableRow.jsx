@@ -2,14 +2,14 @@ import React from "react";
 import { TableRow, TableCell, IconButton } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
 
-function SalesPaymentTableRow({ record, onEdit }) {
+function SalesPaymentTableRow({ record, onEdit, index }) {
     return (
         <TableRow>
-            <TableCell>{record.id}</TableCell>
+            <TableCell>{index}</TableCell>
             <TableCell>{record.item?.productName}</TableCell>
             <TableCell>{record.item?.customerName}</TableCell>
             <TableCell>{record.dueDate}</TableCell>
-            <TableCell>{record.amount != null ? Number(record.amount).toFixed(2) : "-"}</TableCell> {/* Yeni alan! */}
+            <TableCell>{record.amount != null ? Number(record.amount).toFixed(2) : "-"}</TableCell>
             <TableCell>{record.paymentStatus}</TableCell>
             <TableCell>{record.paymentDate || "-"}</TableCell>
             <TableCell>
