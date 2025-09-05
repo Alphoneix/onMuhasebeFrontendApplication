@@ -96,120 +96,136 @@ function ExpenseList() {
     // Genel toplam (gelirler - giderler)
     const generalSum = totalIncomeSum - totalExpenseSum;
 
-    return (<Container maxWidth="md">
-        <Box sx={{my: 4}}>
-            <Typography variant="h4" component="h1" gutterBottom align="center">
-                Gelir/Gider Yönetimi
-            </Typography>
+    return (
+        <Container maxWidth="md">
+            <Box sx={{my: 4}}>
+                <Typography variant="h4" component="h1" gutterBottom align="center">
+                    Gelir/Gider Yönetimi
+                </Typography>
 
-            <Grid container spacing={3} sx={{mb: 4}}>
-                <Grid item xs={12}>
-                    <Card>
+                <Grid container spacing={3} sx={{mb: 4}}>
+                    {/* Gider ve Gelir bölümleri yan yana */}
+                    <Grid item xs={12} md={6}>
+                        {/* Gider ekleme formu */}
+                        <Card sx={{mb: 2}}>
+                            <CardContent>
+                                <Typography variant="h6" gutterBottom>
+                                    Yeni Gider Ekle
+                                </Typography>
+                                <Grid container spacing={1} alignItems="center">
+                                    <Grid item xs={12} sm={8}>
+                                        <TextField
+                                            fullWidth
+                                            label="Gider Miktarı"
+                                            type="number"
+                                            value={amount}
+                                            onChange={(e) => setAmount(e.target.value)}
+                                            InputProps={{
+                                                startAdornment: (<InputAdornment position="start">₺</InputAdornment>),
+                                            }}
+                                            size="small"
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                        <Button
+                                            variant="contained"
+                                            color="primary"
+                                            fullWidth
+                                            onClick={onAddExpense}
+                                            startIcon={<AddIcon/>}
+                                            disabled={!amount}
+                                            sx={{height: '40px'}}
+                                        >
+                                            Ekle
+                                        </Button>
+                                    </Grid>
+                                </Grid>
+                            </CardContent>
+                        </Card>
+                        {/* Gider listesi */}
+                        <AAComp
+                            data={expensesData.map(e => ({ ...e, id: e.id.toString() + "expense" }))}
+                            isLoading={expenseLoading}
+                            isError={expenseError}
+                            total={totalExpenseSum}
+                            totalLabel="Giderler Toplamı"
+                            title="Gider Listesi"
+                        />
+                    </Grid>
+                    <Grid item xs={12} md={6}>
+                        {/* Gelir ekleme formu */}
+                        <Card sx={{mb: 2}}>
+                            <CardContent>
+                                <Typography variant="h6" gutterBottom>
+                                    Yeni Gelir Ekle
+                                </Typography>
+                                <Grid container spacing={1} alignItems="center">
+                                    <Grid item xs={12} sm={8}>
+                                        <TextField
+                                            fullWidth
+                                            label="Gelir Miktarı"
+                                            type="number"
+                                            value={incomeAmount}
+                                            onChange={(e) => setIncomeAmount(e.target.value)}
+                                            InputProps={{
+                                                startAdornment: (<InputAdornment position="start">₺</InputAdornment>),
+                                            }}
+                                            size="small"
+                                        />
+                                    </Grid>
+                                    <Grid item xs={12} sm={4}>
+                                        <Button
+                                            variant="contained"
+                                            color="primary"
+                                            fullWidth
+                                            onClick={onAddIncome}
+                                            startIcon={<AddIcon/>}
+                                            disabled={!incomeAmount}
+                                            sx={{height: '40px'}}
+                                        >
+                                            Ekle
+                                        </Button>
+                                    </Grid>
+                                </Grid>
+                            </CardContent>
+                        </Card>
+                        {/* Gelir listesi */}
+                        <AAComp
+                            data={incomeData.map(i => ({ ...i, id: i.id.toString() + "income" }))}
+                            isLoading={incomeLoading}
+                            isError={incomeError}
+                            total={totalIncomeSum}
+                            totalLabel="Gelirler Toplamı"
+                            title="Gelir Listesi"
+                        />
+                    </Grid>
+                </Grid>
+                {/* Genel toplam */}
+                <Box sx={{mt: 4, display: "flex", justifyContent: "center"}}>
+                    <Card sx={{minWidth: 300}}>
                         <CardContent>
-                            <Grid container spacing={2} alignItems="center">
-                                <Grid item xs={12} md={6}>
-                                    <Typography variant="h6" gutterBottom>
-                                        Yeni Gider Ekle
-                                    </Typography>
-                                    <TextField
-                                        fullWidth
-                                        label="Gider Miktarı"
-                                        type="number"
-                                        value={amount}
-                                        onChange={(e) => setAmount(e.target.value)}
-                                        InputProps={{
-                                            startAdornment: (<InputAdornment position="start">₺</InputAdornment>),
-                                        }}
-                                    />
-                                    <Button
-                                        variant="contained"
-                                        color="primary"
-                                        fullWidth
-                                        onClick={onAddExpense}
-                                        startIcon={<AddIcon/>}
-                                        disabled={!amount}
-                                        sx={{mt: 1}}
-                                    >
-                                        Yeni Gider Ekle
-                                    </Button>
-                                </Grid>
-                                <Grid item xs={12} md={6}>
-                                    <Typography variant="h6" gutterBottom>
-                                        Yeni Gelir Ekle
-                                    </Typography>
-                                    <TextField
-                                        fullWidth
-                                        label="Gelir Miktarı"
-                                        type="number"
-                                        value={incomeAmount}
-                                        onChange={(e) => setIncomeAmount(e.target.value)}
-                                        InputProps={{
-                                            startAdornment: (<InputAdornment position="start">₺</InputAdornment>),
-                                        }}
-                                    />
-                                    <Button
-                                        variant="contained"
-                                        color="primary"
-                                        fullWidth
-                                        onClick={onAddIncome}
-                                        startIcon={<AddIcon/>}
-                                        disabled={!incomeAmount}
-                                        sx={{mt: 1}}
-                                    >
-                                        Yeni Gelir Ekle
-                                    </Button>
-                                </Grid>
-                            </Grid>
+                            <Typography variant="h6" align="center">
+                                Genel Toplam: {generalSum.toFixed(2)} ₺
+                            </Typography>
                         </CardContent>
                     </Card>
-                </Grid>
-            </Grid>
-
-            <AAComp
-                data={expensesData.map(e => ({ ...e, id: e.id.toString() + "expense" }))}
-                isLoading={expenseLoading}
-                isError={expenseError}
-                total={totalExpenseSum}
-                totalLabel="Giderler Toplamı"
-                title="Gider Listesi"
-            />
-
-            <AAComp
-                data={incomeData.map(i => ({ ...i, id: i.id.toString() + "income" }))}
-                isLoading={incomeLoading}
-                isError={incomeError}
-                total={totalIncomeSum}
-                totalLabel="Gelirler Toplamı"
-                title="Gelir Listesi"
-            />
-
-            {/* Genel toplam (Gelirler - Giderler) */}
-            <Box sx={{mt: 4}}>
-                <Card>
-                    <CardContent>
-                        <Typography variant="h6" align="right">
-                            Genel Toplam: {generalSum.toFixed(2)} ₺
-                        </Typography>
-                    </CardContent>
-                </Card>
+                </Box>
             </Box>
-
-        </Box>
-
-        <Snackbar
-            open={snackbar.open}
-            autoHideDuration={6000}
-            onClose={handleCloseSnackbar}
-        >
-            <Alert
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={6000}
                 onClose={handleCloseSnackbar}
-                severity={snackbar.severity}
-                sx={{width: '100%'}}
             >
-                {snackbar.message}
-            </Alert>
-        </Snackbar>
-    </Container>);
+                <Alert
+                    onClose={handleCloseSnackbar}
+                    severity={snackbar.severity}
+                    sx={{width: '100%'}}
+                >
+                    {snackbar.message}
+                </Alert>
+            </Snackbar>
+        </Container>
+    );
 }
 
 export default ExpenseList;
