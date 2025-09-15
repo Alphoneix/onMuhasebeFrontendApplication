@@ -1,10 +1,25 @@
 import React, { useState, useMemo } from "react";
-import { Card, CardContent, Typography, Box, Button, Grid } from "@mui/material";
+import {
+    Card,
+    CardContent,
+    Typography,
+    Box,
+    Button,
+    Grid,
+    Snackbar,
+    Alert,
+    Tabs,
+    Tab
+} from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import SalesPaymentTable from "./SalesPaymentTable.jsx";
+import SalesPaymentTableRow from "./SalesPaymentTableRow.jsx";
 import EditPaymentDialog from "./EditPaymentDialog.jsx";
 import PaymentAddDialog from "./PaymentAddDialog.jsx";
+import InvoiceListDialog from "./InvoiceListDialog.jsx";
+import InvoicePreviewDialog from "./InvoicePreviewDialog.jsx";
 import { fetchPaymentRecords } from "./ItemService.js";
+import { generateInvoicePDF } from "./InvoiceService.js";
 
 const STATUS_OPTIONS = [
     { value: "YAPILMADI", label: "Yapılmayan Ödemeler" },
@@ -17,6 +32,17 @@ function SalesPaymentTracking() {
     const [editDialogOpen, setEditDialogOpen] = useState(false);
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState(null);
+
+    // Fatura dialog ve snackbar
+    const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+    const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
+
+    // Faturalı kayıtlar
+    const [invoicedRecords, setInvoicedRecords] = useState([]);
+
+    // Fatura önizleme dialogu
+    const [invoicePreviewOpen, setInvoicePreviewOpen] = useState(false);
+    const [previewRecord, setPreviewRecord] = useState(null);
 
     // Her status için ayrı ayrı ödeme kayıtlarını çekiyoruz
     const { data: recordsNotDone = [] } = useQuery({
@@ -42,71 +68,119 @@ function SalesPaymentTracking() {
         ...recordsNever
     ], [recordsNotDone, recordsDone, recordsNever]);
 
+    const filteredRecords = useMemo(() => {
+        if (statusFilter === "YAPILMADI") return recordsNotDone;
+        if (statusFilter === "YAPILDI") return recordsDone;
+        if (statusFilter === "YAPILMAYACAK") return recordsNever;
+        return allPaymentRecords;
+    }, [statusFilter, recordsNotDone, recordsDone, recordsNever, allPaymentRecords]);
+
     const handleEdit = (paymentRecord) => {
         setSelectedPayment(paymentRecord);
         setEditDialogOpen(true);
     };
 
-    const handleDialogClose = () => {
-        setEditDialogOpen(false);
-        setSelectedPayment(null);
+    // Fatura butonuna basınca önizleme açılır
+    const handleInvoice = (paymentRecord) => {
+        setPreviewRecord(paymentRecord);
+        setInvoicePreviewOpen(true);
     };
 
-    const handleAddOpen = () => {
-        setAddDialogOpen(true);
+    // Önizleme dialogunda PDF'e dönüştür
+    const handleDownloadPDF = (paymentRecord) => {
+        generateInvoicePDF(paymentRecord);
+        setInvoicePreviewOpen(false);
+        setSnackbar({ open: true, message: "Fatura başarıyla indirildi!", severity: "success" });
+
+        paymentRecord.invoiced = true;
+        setInvoicedRecords(prev => {
+            if (!prev.find(r => r.id === paymentRecord.id)) {
+                return [...prev, paymentRecord];
+            }
+            return prev;
+        });
     };
 
-    const handleAddClose = () => {
-        setAddDialogOpen(false);
+    const handleInvoiceDialogOpen = () => setInvoiceDialogOpen(true);
+    const handleInvoiceDialogClose = () => setInvoiceDialogOpen(false);
+
+    const handleTabChange = (event, newValue) => {
+        setStatusFilter(newValue);
     };
 
     return (
         <Box sx={{ my: 4 }}>
-            <Card sx={{ mb: 2 }}>
-                <CardContent>
-                    <Typography variant="h5" gutterBottom>
-                        Satış Ödeme Takibi
-                    </Typography>
-                    <Grid container spacing={2} sx={{ mb: 2 }}>
-                        {STATUS_OPTIONS.map((option) => (
-                            <Grid item key={option.value}>
-                                <Button
-                                    variant={statusFilter === option.value ? "contained" : "outlined"}
-                                    color="primary"
-                                    onClick={() => setStatusFilter(option.value)}
-                                >
-                                    {option.label}
-                                </Button>
-                            </Grid>
+            <Grid container spacing={2} alignItems="center">
+                <Grid item xs={12} md={8}>
+                    <Tabs
+                        value={statusFilter}
+                        onChange={handleTabChange}
+                        indicatorColor="primary"
+                        textColor="primary"
+                        variant="scrollable"
+                        scrollButtons="auto"
+                    >
+                        {STATUS_OPTIONS.map(option => (
+                            <Tab
+                                key={option.value}
+                                label={option.label}
+                                value={option.value}
+                            />
                         ))}
-                        <Grid item xs>
-                            {/* Sağda hizalama için boş Grid */}
-                        </Grid>
-                        <Grid item>
-                            <Button
-                                variant="contained"
-                                color="success"
-                                onClick={handleAddOpen}
-                            >
-                                Yeni Ödeme Ekle
-                            </Button>
-                        </Grid>
-                    </Grid>
-                    <SalesPaymentTable
-                        status={statusFilter}
-                        onEdit={handleEdit}
-                    />
-                </CardContent>
-            </Card>
+                    </Tabs>
+                </Grid>
+                <Grid item xs={12} md={4} sx={{ textAlign: { xs: "left", md: "right" } }}>
+                    <Button
+                        variant="contained"
+                        color="secondary"
+                        onClick={handleInvoiceDialogOpen}
+                        sx={{ mr: 2 }}
+                    >
+                        Faturalar
+                    </Button>
+                    <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => setAddDialogOpen(true)}
+                    >
+                        Yeni Ödeme Ekle
+                    </Button>
+                </Grid>
+            </Grid>
+            <SalesPaymentTable
+                status={statusFilter}
+                onEdit={handleEdit}
+                onInvoice={handleInvoice}
+                paymentRecords={filteredRecords}
+            />
+            <InvoiceListDialog
+                open={invoiceDialogOpen}
+                onClose={handleInvoiceDialogClose}
+                invoices={invoicedRecords}
+                onInvoiceDownload={generateInvoicePDF}
+            />
+            <InvoicePreviewDialog
+                open={invoicePreviewOpen}
+                onClose={() => setInvoicePreviewOpen(false)}
+                paymentRecord={previewRecord}
+                onDownloadPDF={handleDownloadPDF}
+            />
+            <Snackbar
+                open={snackbar.open}
+                autoHideDuration={3000}
+                onClose={() => setSnackbar({ ...snackbar, open: false })}
+            >
+                <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
+            </Snackbar>
             <EditPaymentDialog
                 open={editDialogOpen}
+                onClose={() => setEditDialogOpen(false)}
                 paymentRecord={selectedPayment}
-                onClose={handleDialogClose}
             />
             <PaymentAddDialog
                 open={addDialogOpen}
-                onClose={handleAddClose}
-                paymentRecords={allPaymentRecords} // autocomplete için tüm kayıtlar!
+                onClose={() => setAddDialogOpen(false)}
+                paymentRecords={allPaymentRecords}
             />
         </Box>
     );

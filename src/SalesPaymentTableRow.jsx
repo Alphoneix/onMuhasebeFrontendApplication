@@ -1,8 +1,19 @@
 import React from "react";
-import { TableRow, TableCell, IconButton } from "@mui/material";
+import { TableRow, TableCell, IconButton, Tooltip } from "@mui/material";
 import EditIcon from "@mui/icons-material/Edit";
+import ReceiptIcon from "@mui/icons-material/Receipt";
 
-function SalesPaymentTableRow({ record, onEdit, index }) {
+function SalesPaymentTableRow({ record, onEdit, onInvoice, index, isEmpty }) {
+    if (isEmpty) {
+        return (
+            <TableRow>
+                <TableCell>{index}</TableCell>
+                <TableCell colSpan={6} />
+                <TableCell />
+            </TableRow>
+        );
+    }
+
     return (
         <TableRow>
             <TableCell>{index}</TableCell>
@@ -16,6 +27,15 @@ function SalesPaymentTableRow({ record, onEdit, index }) {
                 <IconButton color="primary" onClick={() => onEdit(record)}>
                     <EditIcon />
                 </IconButton>
+                <Tooltip title={record.invoiced ? "Fatura indir" : "Fatura oluştur"}>
+                    <IconButton
+                        color={record.invoiced ? "success" : "primary"}
+                        onClick={() => onInvoice(record)}
+                        sx={{ ml: 1 }}
+                    >
+                        <ReceiptIcon />
+                    </IconButton>
+                </Tooltip>
             </TableCell>
         </TableRow>
     );
