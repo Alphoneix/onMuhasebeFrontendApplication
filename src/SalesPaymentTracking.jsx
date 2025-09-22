@@ -13,11 +13,9 @@ import {
 } from "@mui/material";
 import { useQuery } from "@tanstack/react-query";
 import SalesPaymentTable from "./SalesPaymentTable.jsx";
-import SalesPaymentTableRow from "./SalesPaymentTableRow.jsx";
 import EditPaymentDialog from "./EditPaymentDialog.jsx";
 import PaymentAddDialog from "./PaymentAddDialog.jsx";
-import InvoiceListDialog from "./InvoiceListDialog.jsx";
-import InvoicePreviewDialog from "./InvoicePreviewDialog.jsx";
+import InvoiceCreationDialog from "./InvoiceCreationDialog.jsx";
 import { fetchPaymentRecords } from "./ItemService.js";
 
 const STATUS_OPTIONS = [
@@ -32,16 +30,11 @@ function SalesPaymentTracking() {
     const [addDialogOpen, setAddDialogOpen] = useState(false);
     const [selectedPayment, setSelectedPayment] = useState(null);
 
-    // Fatura dialog ve snackbar
+    // Yeni proforma fatura dialog
     const [invoiceDialogOpen, setInvoiceDialogOpen] = useState(false);
+    const [selectedInvoiceRecord, setSelectedInvoiceRecord] = useState(null);
+
     const [snackbar, setSnackbar] = useState({ open: false, message: "", severity: "success" });
-
-    // Faturalı kayıtlar
-    const [invoicedRecords, setInvoicedRecords] = useState([]);
-
-    // Fatura önizleme dialogu
-    const [invoicePreviewOpen, setInvoicePreviewOpen] = useState(false);
-    const [previewRecord, setPreviewRecord] = useState(null);
 
     // Her status için ayrı ayrı ödeme kayıtlarını çekiyoruz
     const { data: recordsNotDone = [] } = useQuery({
@@ -79,36 +72,33 @@ function SalesPaymentTracking() {
         setEditDialogOpen(true);
     };
 
-    // Fatura butonuna basınca önizleme açılır
+    // Proforma fatura oluşturma
     const handleInvoice = (paymentRecord) => {
-        setPreviewRecord(paymentRecord);
-        setInvoicePreviewOpen(true);
+        setSelectedInvoiceRecord(paymentRecord);
+        setInvoiceDialogOpen(true);
     };
-
-    // Fatura önizlemede indirildiğinde, invoicedRecords'a ekle (isteğe bağlı)
-    const handleInvoiceDownloaded = (paymentRecord) => {
-        setInvoicePreviewOpen(false);
-        setSnackbar({ open: true, message: "Fatura başarıyla indirildi!", severity: "success" });
-
-        paymentRecord.invoiced = true;
-        setInvoicedRecords(prev => {
-            if (!prev.find(r => r.id === paymentRecord.id)) {
-                return [...prev, paymentRecord];
-            }
-            return prev;
-        });
-    };
-
-    const handleInvoiceDialogOpen = () => setInvoiceDialogOpen(true);
-    const handleInvoiceDialogClose = () => setInvoiceDialogOpen(false);
 
     const handleTabChange = (event, newValue) => {
         setStatusFilter(newValue);
     };
 
+    const handleInvoiceDialogClose = () => {
+        setInvoiceDialogOpen(false);
+        setSelectedInvoiceRecord(null);
+        setSnackbar({
+            open: true,
+            message: "Proforma fatura işlemi tamamlandı!",
+            severity: "success"
+        });
+    };
+
     return (
         <Box sx={{ my: 4 }}>
-            <Grid container spacing={2} alignItems="center">
+            <Typography variant="h4" component="h1" gutterBottom align="center">
+                Satış ve Ödeme Takibi
+            </Typography>
+
+            <Grid container spacing={2} alignItems="center" sx={{ mb: 3 }}>
                 <Grid item xs={12} md={8}>
                     <Tabs
                         value={statusFilter}
@@ -130,14 +120,6 @@ function SalesPaymentTracking() {
                 <Grid item xs={12} md={4} sx={{ textAlign: { xs: "left", md: "right" } }}>
                     <Button
                         variant="contained"
-                        color="secondary"
-                        onClick={handleInvoiceDialogOpen}
-                        sx={{ mr: 2 }}
-                    >
-                        Faturalar
-                    </Button>
-                    <Button
-                        variant="contained"
                         color="primary"
                         onClick={() => setAddDialogOpen(true)}
                     >
@@ -145,25 +127,26 @@ function SalesPaymentTracking() {
                     </Button>
                 </Grid>
             </Grid>
-            <SalesPaymentTable
-                status={statusFilter}
-                onEdit={handleEdit}
-                onInvoice={handleInvoice}
-                paymentRecords={filteredRecords}
-            />
-            <InvoiceListDialog
+
+            <Card>
+                <CardContent>
+                    <SalesPaymentTable
+                        status={statusFilter}
+                        onEdit={handleEdit}
+                        onInvoice={handleInvoice}
+                        paymentRecords={filteredRecords}
+                    />
+                </CardContent>
+            </Card>
+
+            {/* Proforma Fatura Dialog */}
+            <InvoiceCreationDialog
                 open={invoiceDialogOpen}
                 onClose={handleInvoiceDialogClose}
-                invoices={invoicedRecords}
-                onInvoiceDownload={(_paymentRecord) => {}} // Kendi InvoicePreviewDialog'unuzda PDF indiriliyor, burada gerek yok
-            />
-            <InvoicePreviewDialog
-                open={invoicePreviewOpen}
-                onClose={() => setInvoicePreviewOpen(false)}
-                paymentRecord={previewRecord}
+                paymentRecord={selectedInvoiceRecord}
                 paymentRecords={allPaymentRecords}
-                onDownloaded={handleInvoiceDownloaded}
             />
+
             <Snackbar
                 open={snackbar.open}
                 autoHideDuration={3000}
@@ -171,11 +154,13 @@ function SalesPaymentTracking() {
             >
                 <Alert severity={snackbar.severity}>{snackbar.message}</Alert>
             </Snackbar>
+
             <EditPaymentDialog
                 open={editDialogOpen}
                 onClose={() => setEditDialogOpen(false)}
                 paymentRecord={selectedPayment}
             />
+
             <PaymentAddDialog
                 open={addDialogOpen}
                 onClose={() => setAddDialogOpen(false)}

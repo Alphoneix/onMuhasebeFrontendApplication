@@ -27,9 +27,9 @@ function SalesPaymentTableRow({ record, onEdit, onInvoice, index, isEmpty }) {
                 <IconButton color="primary" onClick={() => onEdit(record)}>
                     <EditIcon />
                 </IconButton>
-                <Tooltip title={record.invoiced ? "Fatura indir" : "Fatura oluştur"}>
+                <Tooltip title="Proforma Fatura Oluştur">
                     <IconButton
-                        color={record.invoiced ? "success" : "primary"}
+                        color="success"
                         onClick={() => onInvoice(record)}
                         sx={{ ml: 1 }}
                     >
