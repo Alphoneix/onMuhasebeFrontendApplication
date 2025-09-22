@@ -1,11 +1,12 @@
-import React from "react";
+'use client';
+import React, { useRef, useState, useMemo, useEffect } from "react";
 import {
     Dialog,
     DialogTitle,
     DialogContent,
     DialogActions,
     Button,
-    Typography,
+    TextField,
     Box,
     Table,
     TableBody,
@@ -13,36 +14,84 @@ import {
     TableContainer,
     TableHead,
     TableRow,
-    Paper
+    Paper,
+    Autocomplete,
+    Typography
 } from "@mui/material";
+import ReactToPdf from "react-to-pdf";
 
-// Mavi tonları için tema rengi
+// Ana renkler
 const MAIN_BLUE = "#1565c0";
 const LIGHT_BLUE = "#e3f2fd";
 
+// Tarih formatlayıcı
 function formatDate(dateStr) {
     if (!dateStr) return "";
     const date = new Date(dateStr);
     if (isNaN(date)) return "";
-    // GG.AA.YYYY
     return `${String(date.getDate()).padStart(2, "0")}.${String(date.getMonth() + 1).padStart(2, "0")}.${date.getFullYear()}`;
 }
 
-function InvoicePreviewDialog({ open, onClose, paymentRecord, onDownloadPDF }) {
-    if (!paymentRecord) return null;
+// Autocomplete ve fiyat için veri çıkarıcı
+function extractAutoData(paymentRecords) {
+    const customerSet = new Set();
+    const productSet = new Set();
+    const productPriceMap = {};
 
-    // Fatura tarihi ve vade tarihi aynı
-    const date = paymentRecord.paymentDate || paymentRecord.dueDate || "";
-    const formattedDate = formatDate(date);
+    paymentRecords.forEach((rec) => {
+        if (rec.item?.customerName) customerSet.add(rec.item.customerName);
+        if (rec.item?.productName) {
+            productSet.add(rec.item.productName);
+            if (rec.amount != null) productPriceMap[rec.item.productName] = rec.amount;
+        }
+    });
+
+    return {
+        customerList: Array.from(customerSet),
+        productList: Array.from(productSet),
+        productPriceMap
+    };
+}
+
+function InvoicePreviewDialog({
+                                  open,
+                                  onClose,
+                                  paymentRecord,
+                                  paymentRecords = []
+                              }) {
+    // Autocomplete için geçmiş veri
+    const { customerList, productList, productPriceMap } = useMemo(
+        () => extractAutoData(paymentRecords),
+        [paymentRecords]
+    );
+
+    // Editlenebilir state
+    const [customerName, setCustomerName] = useState(paymentRecord?.item?.customerName || "");
+    const [productName, setProductName] = useState(paymentRecord?.item?.productName || "");
+    const [amount, setAmount] = useState(paymentRecord?.amount || 0);
+    const [invoiceDate, setInvoiceDate] = useState(paymentRecord?.paymentDate || paymentRecord?.dueDate || "");
+    const [note, setNote] = useState(paymentRecord?.note || "");
+    const [quantity, setQuantity] = useState(1);
+
+    // Hizmet adı değişirse otomatik fiyat getir
+    useEffect(() => {
+        if (productName && productPriceMap[productName] != null) {
+            setAmount(productPriceMap[productName]);
+        }
+        // eslint-disable-next-line
+    }, [productName]);
+
+    // PDF için ref
+    const pdfRef = useRef();
+
+    // Toplam tutar
+    const totalAmount = Number(amount) * Number(quantity);
 
     // Fatura No
-    const invoiceNo = paymentRecord.id ? `INV-${paymentRecord.id}` : "";
+    const invoiceNo = paymentRecord?.id ? `INV-${paymentRecord.id}` : "";
 
-    // Hizmet ve toplam
-    const hizmet = paymentRecord.item?.productName || "";
-    const musteri = paymentRecord.item?.customerName || "";
-
-    const tutar = paymentRecord.amount != null ? Number(paymentRecord.amount).toFixed(2) : "0.00";
+    // Formatlı tarih
+    const formattedDate = formatDate(invoiceDate);
 
     return (
         <Dialog open={open} onClose={onClose} maxWidth="sm" fullWidth>
@@ -50,85 +99,139 @@ function InvoicePreviewDialog({ open, onClose, paymentRecord, onDownloadPDF }) {
                 PROFORMA FATURA
             </DialogTitle>
             <DialogContent sx={{ background: LIGHT_BLUE, py: 3 }}>
-                <Box sx={{ mb: 2, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                    <Box>
-                        <Typography sx={{ fontWeight: "bold", color: MAIN_BLUE }}>UzAI Teknoloji</Typography>
-                        {/* Şirket adresi veya diğer bilgiler eklenebilir */}
+                {/* PDF'e çevrilecek Alan */}
+                <div ref={pdfRef}>
+                    <Box sx={{ mb: 2, display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                        <Box>
+                            <Typography sx={{ fontWeight: "bold", color: MAIN_BLUE }}>UzAI Teknoloji</Typography>
+                        </Box>
+                        <Box sx={{ textAlign: "right" }}>
+                            <Typography sx={{ color: MAIN_BLUE }}>Fatura No: <b>{invoiceNo}</b></Typography>
+                            <Typography sx={{ color: MAIN_BLUE }}>Fatura Tarihi: <b>{formattedDate}</b></Typography>
+                        </Box>
                     </Box>
-                    <Box sx={{ textAlign: "right" }}>
-                        <Typography sx={{ color: MAIN_BLUE }}>Fatura No: <b>{invoiceNo}</b></Typography>
-                        <Typography sx={{ color: MAIN_BLUE }}>Fatura Tarihi: <b>{formattedDate}</b></Typography>
-                        <Typography sx={{ color: MAIN_BLUE }}>Vade Tarihi: <b>{formattedDate}</b></Typography>
+
+                    <Box sx={{ mb: 2 }}>
+                        <Autocomplete
+                            freeSolo
+                            options={customerList}
+                            value={customerName}
+                            onChange={(e, v) => setCustomerName(v ?? "")}
+                            renderInput={(params) => (
+                                <TextField {...params} label="Müşteri Adı" variant="outlined" size="small" fullWidth />
+                            )}
+                            sx={{ mb: 1 }}
+                        />
+                        <TextField
+                            label="Fatura Notu"
+                            value={note}
+                            onChange={e => setNote(e.target.value)}
+                            variant="outlined"
+                            size="small"
+                            fullWidth
+                            multiline
+                            minRows={2}
+                        />
                     </Box>
-                </Box>
 
-                <Box sx={{ mb: 3 }}>
-                    <Typography sx={{ color: MAIN_BLUE, fontWeight: "bold", mb: 0.5 }}>Bill To:</Typography>
-                    <Typography>{musteri}</Typography>
-                </Box>
+                    <TableContainer component={Paper} sx={{ background: "#fff" }}>
+                        <Table size="small">
+                            <TableHead>
+                                <TableRow sx={{ background: MAIN_BLUE }}>
+                                    <TableCell sx={{ color: "#fff", width: 60 }}>#</TableCell>
+                                    <TableCell sx={{ color: "#fff" }}>Hizmet</TableCell>
+                                    <TableCell sx={{ color: "#fff", width: 80 }}>Miktar</TableCell>
+                                    <TableCell sx={{ color: "#fff", width: 120, textAlign: "right" }}>Birim Fiyat (TL)</TableCell>
+                                    <TableCell sx={{ color: "#fff", textAlign: "right", width: 120 }}>Toplam (TL)</TableCell>
+                                </TableRow>
+                            </TableHead>
+                            <TableBody>
+                                <TableRow>
+                                    <TableCell>1</TableCell>
+                                    <TableCell>
+                                        <Autocomplete
+                                            freeSolo
+                                            options={productList}
+                                            value={productName}
+                                            onChange={(e, v) => setProductName(v ?? "")}
+                                            renderInput={(params) => (
+                                                <TextField {...params} label="Hizmet/Ürün" variant="standard" size="small" />
+                                            )}
+                                        />
+                                    </TableCell>
+                                    <TableCell>
+                                        <TextField
+                                            value={quantity}
+                                            onChange={e => setQuantity(Number(e.target.value))}
+                                            type="number"
+                                            variant="standard"
+                                            size="small"
+                                            inputProps={{ min: 1 }}
+                                        />
+                                    </TableCell>
+                                    <TableCell sx={{ textAlign: "right" }}>
+                                        <TextField
+                                            value={amount}
+                                            onChange={e => setAmount(Number(e.target.value))}
+                                            type="number"
+                                            variant="standard"
+                                            size="small"
+                                            inputProps={{ min: 0, step: 0.01 }}
+                                        />
+                                    </TableCell>
+                                    <TableCell sx={{ textAlign: "right" }}>
+                                        {totalAmount.toFixed(2)} ₺
+                                    </TableCell>
+                                </TableRow>
+                            </TableBody>
+                        </Table>
+                    </TableContainer>
 
-                <TableContainer component={Paper} sx={{ background: "#fff" }}>
-                    <Table size="small">
-                        <TableHead>
-                            <TableRow sx={{ background: MAIN_BLUE }}>
-                                <TableCell sx={{ color: "#fff", width: 60 }}>#</TableCell>
-                                <TableCell sx={{ color: "#fff" }}>Hizmet</TableCell>
-                                <TableCell sx={{ color: "#fff", textAlign: "right", width: 120 }}>Tutar (TL)</TableCell>
-                            </TableRow>
-                        </TableHead>
-                        <TableBody>
-                            <TableRow>
-                                <TableCell>1</TableCell>
-                                <TableCell>{hizmet}</TableCell>
-                                <TableCell sx={{ textAlign: "right" }}>{tutar} ₺</TableCell>
-                            </TableRow>
-                        </TableBody>
-                    </Table>
-                </TableContainer>
+                    <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
+                        <Box sx={{
+                            minWidth: 220,
+                            background: "#f5fafd",
+                            border: `1px solid ${MAIN_BLUE}`,
+                            borderRadius: 1,
+                            p: 1.5,
+                            textAlign: "right"
+                        }}>
+                            <Typography sx={{ fontWeight: "bold" }}>Toplam Tutar:</Typography>
+                            <Typography sx={{ fontSize: 20, fontWeight: "bold", color: MAIN_BLUE }}>
+                                {totalAmount.toFixed(2)} ₺
+                            </Typography>
+                        </Box>
+                    </Box>
 
-                <Box sx={{ display: "flex", justifyContent: "flex-end", mt: 2 }}>
-                    <Box sx={{
-                        minWidth: 220,
-                        background: "#f5fafd",
-                        border: `1px solid ${MAIN_BLUE}`,
-                        borderRadius: 1,
-                        p: 1.5,
-                        textAlign: "right"
-                    }}>
-                        <Typography sx={{ fontWeight: "bold" }}>Toplam Tutar:</Typography>
-                        <Typography sx={{ fontSize: 20, fontWeight: "bold", color: MAIN_BLUE }}>
-                            {tutar} ₺
+                    <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ color: "#777", fontSize: 13 }}>
+                            Lütfen ödemeyi fatura tarihinden itibaren 1 iş günü içinde tamamlayınız.
+                            Bu bir proforma faturadır ve ödeme yapılmadan hizmet başlamaz.
                         </Typography>
-                        <Typography sx={{ mt: 1, color: "#666", fontSize: 14 }}>Balance Due: {tutar} ₺</Typography>
                     </Box>
-                </Box>
-
-                <Box sx={{ mt: 3 }}>
-                    <Typography sx={{ color: "#777", fontSize: 13 }}>
-                        Lütfen ödemeyi fatura tarihinden itibaren 1 iş günü içinde tamamlayınız.
-                        Bu bir proforma faturadır ve ödeme yapılmadan hizmet başlamaz.
-                    </Typography>
-                </Box>
-                <Box sx={{ mt: 2 }}>
-                    <Typography sx={{ color: "#aaa", fontSize: 11, textAlign: "center" }}>
-                        Bu belge dijital olarak oluşturulmuştur ve resmi bir fatura yerine geçmez.
-                    </Typography>
-                </Box>
+                    <Box sx={{ mt: 2 }}>
+                        <Typography sx={{ color: "#aaa", fontSize: 11, textAlign: "center" }}>
+                            Bu belge dijital olarak oluşturulmuştur ve resmi bir fatura yerine geçmez.
+                        </Typography>
+                    </Box>
+                </div>
             </DialogContent>
             <DialogActions sx={{ background: LIGHT_BLUE, pb: 2 }}>
                 <Button onClick={onClose}>Kapat</Button>
-                <Button
-                    onClick={() => {
-                        console.log("PDF Olarak İndir tıklandı", paymentRecord);
-                        onDownloadPDF(paymentRecord);
-                    }}
-                    color="primary"
-                    variant="contained"
-                    sx={{ fontWeight: "bold" }}
-                >
-                    PDF Olarak İndir
-                </Button>
-
+                {open && (
+                    <ReactToPdf targetRef={pdfRef} filename={`ProformaFatura_${invoiceNo}.pdf`} scale={1}>
+                        {({ toPdf }) => (
+                            <Button
+                                onClick={toPdf}
+                                color="primary"
+                                variant="contained"
+                                sx={{ fontWeight: "bold" }}
+                            >
+                                PDF Olarak İndir
+                            </Button>
+                        )}
+                    </ReactToPdf>
+                )}
             </DialogActions>
         </Dialog>
     );
