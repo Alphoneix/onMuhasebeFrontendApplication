@@ -19,7 +19,6 @@ import PaymentAddDialog from "./PaymentAddDialog.jsx";
 import InvoiceListDialog from "./InvoiceListDialog.jsx";
 import InvoicePreviewDialog from "./InvoicePreviewDialog.jsx";
 import { fetchPaymentRecords } from "./ItemService.js";
-import { generateInvoicePDF } from "./InvoiceService.js";
 
 const STATUS_OPTIONS = [
     { value: "YAPILMADI", label: "Yapılmayan Ödemeler" },
@@ -86,9 +85,8 @@ function SalesPaymentTracking() {
         setInvoicePreviewOpen(true);
     };
 
-    // Önizleme dialogunda PDF'e dönüştür
-    const handleDownloadPDF = (paymentRecord) => {
-        generateInvoicePDF(paymentRecord);
+    // Fatura önizlemede indirildiğinde, invoicedRecords'a ekle (isteğe bağlı)
+    const handleInvoiceDownloaded = (paymentRecord) => {
         setInvoicePreviewOpen(false);
         setSnackbar({ open: true, message: "Fatura başarıyla indirildi!", severity: "success" });
 
@@ -157,13 +155,14 @@ function SalesPaymentTracking() {
                 open={invoiceDialogOpen}
                 onClose={handleInvoiceDialogClose}
                 invoices={invoicedRecords}
-                onInvoiceDownload={generateInvoicePDF}
+                onInvoiceDownload={(_paymentRecord) => {}} // Kendi InvoicePreviewDialog'unuzda PDF indiriliyor, burada gerek yok
             />
             <InvoicePreviewDialog
                 open={invoicePreviewOpen}
                 onClose={() => setInvoicePreviewOpen(false)}
                 paymentRecord={previewRecord}
-                onDownloadPDF={handleDownloadPDF}
+                paymentRecords={allPaymentRecords}
+                onDownloaded={handleInvoiceDownloaded}
             />
             <Snackbar
                 open={snackbar.open}
